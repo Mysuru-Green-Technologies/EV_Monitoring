@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <!-- KPI Summary -->
+    <div class="col-md-3">
+        <div class="card text-white bg-primary shadow-sm">
+            <div class="card-body">
+                <h5>Total Devices</h5>
+                <h3>{{ devices|length }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success shadow-sm">
+            <div class="card-body">
+                <h5>Active Chargers</h5>
+                <h3>{{ status_counts | selectattr('status', 'equalto', 'active') | list | length }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning shadow-sm">
+            <div class="card-body">
+                <h5>Ongoing Sessions</h5>
+                <h3>{{ charging_sessions | selectattr('end_time', 'equalto', None) | list | length }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Devices Section -->
+<h4 class="mb-3">Your Devices</h4>
+<div class="row">
+    {% for device in devices %}
+    <div class="col-md-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">{{ device.device_name }}</h5>
+                <p class="card-text">
+                    <strong>ID:</strong> {{ device.device_id }}<br>
+                    <strong>Location:</strong> {{ device.location or 'N/A' }}
+                </p>
+                <a href="{{ url_for('device_detail', device_id=device.device_id) }}" class="btn btn-outline-primary btn-sm">
+                    View Details
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="row my-4">
+    <!-- Charger Status Chart -->
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Charger Status</h5>
+                {% if status_counts %}
+                <div style="position: relative; height: 250px;">
+                    <canvas id="statusChart"></canvas>
+                </div>
+                {% else %}
+                <p class="text-muted">No charger status data available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Energy Usage Chart -->
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Energy Usage (kWh)</h5>
+                <div style="position: relative; height: 250px;">
+                    <canvas id="energyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Revenue Chart -->
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Revenue (₹)</h5>
+                <div style="position: relative; height: 250px;">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Recent Sessions -->
+<div class="card mt-4 shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5>Recent Charging Sessions</h5>
+        <a href="{{ url_for('add_device') }}" class="btn btn-sm btn-success">
+            <i class="bi bi-plus"></i> Add Device
+        </a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Device</th>
+                        <th>Charger</th>
+                        <th>Start Time</th>
+                        <th>Duration</th>
+                        <th>Energy (kWh)</th>
+                        <th>Amount (₹)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in charging_sessions %}
+                    <tr>
+                        <td>{{ session.device_id or 'N/A' }}</td>
+                        <td>{{ session.charger_name }}</td>
+                        <td>{{ session.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if session.end_time %}
+                                {{ (session.end_time - session.start_time).seconds // 60 }} min
+                            {% else %}
+                                <span class="text-warning">Ongoing</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ "%.2f"|format(session.energy_consumed) if session.energy_consumed else 'N/A' }}</td>
+                        <td>{{ "%.2f"|format(session.amount_paid) if session.amount_paid else 'N/A' }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if session.payment_status == 'completed' else 'warning' }}">
+                                {{ session.payment_status or 'N/A' }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    fetch('/api/chart-data')
+    .then(response => response.json())
+    .then(data => {
+        const statusLabels = data.status_counts.map(item => item.status);
+        const statusValues = data.status_counts.map(item => item.count);
+
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: statusLabels,
+                datasets: [{
+                    data: statusValues,
+                    backgroundColor: ['#28a745', '#ffc107', '#dc3545', '#007bff']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+
+        const energyLabels = data.energy_data.map(item => item.date);
+        const energyValues = data.energy_data.map(item => item.total_energy);
+
+        new Chart(document.getElementById('energyChart'), {
+            type: 'line',
+            data: {
+                labels: energyLabels,
+                datasets: [{
+                    label: 'Energy (kWh)',
+                    data: energyValues,
+                    borderColor: '#36b9cc',
+                    backgroundColor: 'rgba(54,185,204,0.2)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' }
+                }
+            }
+        });
+
+        const revenueLabels = data.revenue_data.map(item => item.date);
+        const revenueValues = data.revenue_data.map(item => item.total_revenue);
+
+        new Chart(document.getElementById('revenueChart'), {
+            type: 'bar',
+            data: {
+                labels: revenueLabels,
+                datasets: [{
+                    label: 'Revenue (₹)',
+                    data: revenueValues,
+                    backgroundColor: '#4e73df'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' }
+                }
+            }
+        });
+    });
+});
+</script>
+
+{% endblock %}

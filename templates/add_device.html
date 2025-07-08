@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Add New Device</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_device') }}">
+                    <div class="mb-3">
+                        <label for="device_name" class="form-label">Device Name</label>
+                        <input type="text" class="form-control" id="device_name" name="device_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="device_id" class="form-label">Device ID</label>
+                        <input type="text" class="form-control" id="device_id" name="device_id" required>
+                        <small class="text-muted">Unique identifier for your device</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="location" class="form-label">Location (Optional)</label>
+                        <input type="text" class="form-control" id="location" name="location">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Device</button>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

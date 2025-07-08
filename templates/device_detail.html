@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ device.device_name }}</h2>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+</div>
+
+<div class="mb-3">
+    <a href="{{ url_for('add_charger', device_id=device.device_id) }}" class="btn btn-sm btn-success">
+        <i class="bi bi-plus"></i> Add Charger
+    </a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Device Information</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>Device ID:</strong> {{ device.device_id }}</li>
+                    <li class="list-group-item"><strong>Location:</strong> {{ device.location or 'Not specified' }}</li>
+                    <li class="list-group-item"><strong>Registered:</strong> {{ device.created_at.strftime('%Y-%m-%d') }}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Chargers</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Power</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for charger in chargers %}
+                            <tr>
+                                <td><a href="{{ url_for('charger_detail', charger_id=charger.id) }}">{{ charger.charger_name }}</a></td>
+                                <td>{{ charger.charger_type or 'N/A' }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if charger.status == 'active' else 'secondary' }}">
+                                        {{ charger.status }}
+                                    </span>
+                                </td>
+                                <td>{{ charger.max_power or 'N/A' }} kW</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5>Recent Charging Sessions</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Charger</th>
+                        <th>Start Time</th>
+                        <th>Duration</th>
+                        <th>Energy (kWh)</th>
+                        <th>Amount (₹)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for session in charging_sessions %}
+                    <tr>
+                        <td>{{ session.charger_name }}</td>
+                        <td>{{ session.start_time.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>
+                            {% if session.end_time %}
+                                {{ (session.end_time - session.start_time).seconds // 60 }} min
+                            {% else %}
+                                Ongoing
+                            {% endif %}
+                        </td>
+                        <td>{{ "%.2f"|format(session.energy_consumed) if session.energy_consumed else 'N/A' }}</td>
+                        <td>{{ "%.2f"|format(session.amount_paid) if session.amount_paid else 'N/A' }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if session.payment_status == 'completed' else 'warning' }}">
+                                {{ session.payment_status or 'N/A' }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

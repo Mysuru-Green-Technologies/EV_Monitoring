@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Add New Charger to {{ device_id }}</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('add_charger', device_id=device_id) }}">
+                    <div class="mb-3">
+                        <label for="charger_name" class="form-label">Charger Name</label>
+                        <input type="text" class="form-control" id="charger_name" name="charger_name" required>
+                        <small class="text-muted">Example: Charger 1, Fast Charger, etc.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="charger_type" class="form-label">Charger Type</label>
+                        <select class="form-select" id="charger_type" name="charger_type" required>
+                            <option value="">Select type</option>
+                            <option value="Type 1">Type 1 (J1772)</option>
+                            <option value="Type 2">Type 2 (Mennekes)</option>
+                            <option value="CCS">CCS (Combo)</option>
+                            <option value="CHAdeMO">CHAdeMO</option>
+                            <option value="Tesla">Tesla</option>
+                            <option value="GB/T">GB/T</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="max_power" class="form-label">Max Power (kW)</label>
+                        <input type="number" step="0.1" class="form-control" id="max_power" name="max_power">
+                        <small class="text-muted">Optional - Maximum power output in kW</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Charger</button>
+                    <a href="{{ url_for('device_detail', device_id=device_id) }}" class="btn btn-outline-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

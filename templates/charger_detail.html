@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>{{ charger.charger_name }} ({{ charger.device_name }})</h2>
+    <a href="{{ url_for('device_detail', device_id=charger.device_id) }}" class="btn btn-outline-secondary">Back to Device</a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Charger Information</h5>
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><strong>Type:</strong> {{ charger.charger_type or 'N/A' }}</li>
+                    <li class="list-group-item"><strong>Max Power:</strong> {{ charger.max_power or 'N/A' }} kW</li>
+                    <li class="list-group-item">
+                        <strong>Status:</strong> 
+                        <span class="badge bg-{{ 'success' if charger.status == 'active' else 'secondary' }}">
+                            {{ charger.status }}
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Current Readings</h5>
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="card bg-light mb-2">
+                            <div class="card-body">
+                                <h6>Voltage</h6>
+                                <h4 id="voltage">-- V</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light mb-2">
+                            <div class="card-body">
+                                <h6>Current</h6>
+                                <h4 id="current">-- A</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light mb-2">
+                            <div class="card-body">
+                                <h6>Power</h6>
+                                <h4 id="power">-- kW</h4>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light mb-2">
+                            <div class="card-body">
+                                <h6>Energy</h6>
+                                <h4 id="energy">-- kWh</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <canvas id="readingsChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Recent Sessions</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Start Time</th>
+                                <th>Duration</th>
+                                <th>Energy</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in charging_sessions %}
+                            <tr>
+                                <td>{{ session.start_time.strftime('%m-%d %H:%M') }}</td>
+                                <td>
+                                    {% if session.end_time %}
+                                        {{ (session.end_time - session.start_time).seconds // 60 }} min
+                                    {% else %}
+                                        Ongoing
+                                    {% endif %}
+                                </td>
+                                <td>{{ "%.2f"|format(session.energy_consumed) if session.energy_consumed else 'N/A' }}</td>
+                                <td>₹{{ "%.2f"|format(session.amount_paid) if session.amount_paid else 'N/A' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Recent Readings</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Voltage</th>
+                                <th>Current</th>
+                                <th>Energy</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reading in meter_readings|batch(5)|first %}
+                            <tr>
+                                <td>{{ reading.timestamp.strftime('%H:%M') }}</td>
+                                <td>{{ "%.1f"|format(reading.voltage) if reading.voltage else 'N/A' }} V</td>
+                                <td>{{ "%.2f"|format(reading.current) if reading.current else 'N/A' }} A</td>
+                                <td>{{ "%.3f"|format(reading.energy) if reading.energy else 'N/A' }} kWh</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize chart
+    const ctx = document.getElementById('readingsChart').getContext('2d');
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'Voltage (V)',
+                    data: [],
+                    borderColor: 'rgba(78, 115, 223, 1)',
+                    backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                    tension: 0.1,
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Current (A)',
+                    data: [],
+                    borderColor: 'rgba(28, 200, 138, 1)',
+                    backgroundColor: 'rgba(28, 200, 138, 0.05)',
+                    tension: 0.1,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Voltage (V)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                    title: {
+                        display: true,
+                        text: 'Current (A)'
+                    }
+                }
+            }
+        }
+    });
+
+    // Function to update real-time data
+    function updateReadings() {
+        fetch(`/api/meter_readings?charger_id={{ charger.id }}&limit=20`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.length > 0) {
+                    // Update latest readings
+                    const latest = data[0];
+                    document.getElementById('voltage').textContent = latest.voltage ? latest.voltage.toFixed(1) + ' V' : '-- V';
+                    document.getElementById('current').textContent = latest.current ? latest.current.toFixed(2) + ' A' : '-- A';
+                    
+                    // Calculate power if both voltage and current are available
+                    if (latest.voltage && latest.current) {
+                        const power = latest.voltage * latest.current / 1000; // kW
+                        document.getElementById('power').textContent = power.toFixed(2) + ' kW';
+                    } else {
+                        document.getElementById('power').textContent = '-- kW';
+                    }
+                    
+                    document.getElementById('energy').textContent = latest.energy ? latest.energy.toFixed(3) + ' kWh' : '-- kWh';
+
+                    // Update chart
+                    chart.data.labels = data.map(r => new Date(r.timestamp).toLocaleTimeString()).reverse();
+                    chart.data.datasets[0].data = data.map(r => r.voltage).reverse();
+                    chart.data.datasets[1].data = data.map(r => r.current).reverse();
+                    chart.update();
+                }
+            });
+    }
+
+    // Initial load and periodic updates
+    updateReadings();
+    setInterval(updateReadings, 5000); // Update every 5 seconds
+</script>
+{% endblock %}

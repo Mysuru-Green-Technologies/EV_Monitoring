@@ -1,9 +1,9 @@
 import os
 
 # Database configuration
-DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_USER = os.getenv('DB_USER', 'root')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'root')
+DB_HOST = os.getenv('DB_HOST', '192.168.0.174')
+DB_USER = os.getenv('DB_USER', 'remote_control')
+DB_PASSWORD = os.getenv('DB_PASSWORD', 'Remote_control')
 DB_NAME = os.getenv('DB_NAME', 'ev_charging_db')
 
 # Razorpay configuration

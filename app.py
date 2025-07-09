@@ -8,7 +8,7 @@ import datetime
 from waitress import serve
 
 app = Flask(__name__)
-app.config['APPLICATION_ROOT'] = '/EV_Monitoring'
+app.config['APPLICATION_ROOT'] = '/login'
 app.secret_key = config.SECRET_KEY
 
 # Register blueprients

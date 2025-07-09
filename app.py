@@ -5,9 +5,12 @@ import config
 from functools import wraps
 from charts import charts_bp 
 import datetime
+from waitress import serve
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
+
+# Register blueprients
 app.register_blueprint(charts_bp)
 
 # Login required decorator
@@ -367,4 +370,4 @@ def register():
     return render_template('register.html')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)
+    serve(app, host='0.0.0.0', port=5001)

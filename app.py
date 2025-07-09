@@ -8,11 +8,10 @@ import datetime
 from waitress import serve
 
 app = Flask(__name__)
-app.config['APPLICATION_ROOT'] = '/login'
 app.secret_key = config.SECRET_KEY
 
 # Register blueprients
-app.register_blueprint(charts_bp)
+app.register_blueprint(charts_bp, url_prefix='/charts')
 
 # Login required decorator
 def login_required(f):
